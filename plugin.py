@@ -49,12 +49,16 @@ logger.setLevel(logging.INFO)
 handler = RotatingFileHandler(dir+'/Verisure.log', maxBytes=1000000, backupCount=5)
 logger.addHandler(handler)
 
+
 class BasePlugin:
     enabled = False
 
     def __init__(self):
         self.Count = 6
         return
+
+    def onStop(self):
+        self.session.logout()
 
     def onStart(self):
 #        Domoticz.Debugging(128)
@@ -75,21 +79,14 @@ class BasePlugin:
                 Domoticz.Image('Verisure.zip').Create()
             self.ImageID = Images["Verisure"].ID
 
-    def onDisconnect(self, Connection):
-        WriteDebug("onDisconnect called for connection '"+Connection.Name+"'.")
+        self.session = verisure.Session(self.Username,self.Password)
 
     def onHeartbeat(self):
         if self.Count >= 1:
-
-            session = verisure.Session(self.Username,self.Password)
-            session.login()
-            overview = session.get_lock_state()
-            b = overview[0]
-            for a,c in b.items():
-                Domoticz.Log(str(a))
-                Domoticz.Log(str(c))
-                UpdateDevice(a,str(c))
-#            session.logout()
+            self.session.login()
+            overview = self.session.get_lock_state()
+            for Name,Value in overview[0].items():
+                UpdateDevice(Name,str(Value))
             self.Count = 0
         self.Count += 1
 
@@ -188,9 +185,10 @@ def UpdateDevice(Name,sValue):
             Used = 0
         else:
             Used = 1
-        if ID == 2 or ID == 3:
+        if ID == 2 or ID == 3 or ID == 5 or ID == 10:
             Domoticz.Device(Name=Name, Unit=ID, TypeName="Text", Options={"Custom": "0;"+Unit}, Used=1, Image=(_plugin.ImageID)).Create()
-        Domoticz.Device(Name=Name, Unit=ID, TypeName="Custom", Options={"Custom": "0;"+Unit}, Used=1, Image=(_plugin.ImageID)).Create()
+        else:
+            Domoticz.Device(Name=Name, Unit=ID, TypeName="Custom", Options={"Custom": "0;"+Unit}, Used=1, Image=(_plugin.ImageID)).Create()
 
     if (ID in Devices):
         if Devices[ID].sValue != sValue:
@@ -204,13 +202,6 @@ def CheckInternet():
         WriteDebug("Internet is OK")
         return True
     except:
-        if _plugin.GetToken.Connected() or _plugin.GetToken.Connecting():
-            _plugin.GetToken.Disconnect()
-        if _plugin.GetData.Connected() or _plugin.GetData.Connecting():
-            _plugin.GetData.Disconnect()
-        if _plugin.GetID.Connected() or _plugin.GetID.Connecting():
-            _plugin.GetID.Disconnect()
-
         WriteDebug("Internet is not available")
         return False
 
@@ -233,6 +224,10 @@ def onMessage(Connection, Data):
 def onHeartbeat():
     global _plugin
     _plugin.onHeartbeat()
+
+def onStop():
+    global _plugin
+    _plugin.onStop()
 
     # Generic helper functions
 def DumpConfigToLog():
