@@ -3,10 +3,9 @@
 # Author: flopp999
 #
 """
-<plugin key="Verisure" name="Verisure 0.1" author="flopp999" version="0.1" wikilink="https://github.com/flopp999/Verisure-Domoticz" externallink="https://www.verisure.com">
+<plugin key="Verisure" name="Verisure 0.12" author="flopp999" version="0.12" wikilink="https://github.com/flopp999/Verisure-Domoticz" externallink="https://www.verisure.com">
     <description>
         <h2>Support me with a coffee &<a href="https://www.buymeacoffee.com/flopp999">https://www.buymeacoffee.com/flopp999</a></h2><br/>
-        <h2>or use my Tibber link &<a href="https://tibber.com/se/invite/8af85f51">https://tibber.com/se/invite/8af85f51</a></h2><br/>
         <h3>Configuration</h3>
         <h4>Use Username and Password from mypages.verisure.com &<a href="https://mypages.verisure.com">https://mypages.verisure.com</a></h4><br/>
     </description>
@@ -55,6 +54,7 @@ class BasePlugin:
 
     def __init__(self):
         self.Count = 6
+        self.LoggedIn = False
         return
 
     def onStop(self):
@@ -80,14 +80,26 @@ class BasePlugin:
             self.ImageID = Images["Verisure"].ID
 
         self.session = verisure.Session(self.Username,self.Password)
+        try:
+            self.session.login()
+            self.LoggedIn = True
+        except verisure.session.LoginError as error:
+            Domoticz.Error(str(error))
+            return
 
     def onHeartbeat(self):
-        if self.Count >= 1:
-            self.session.login()
-            overview = self.session.get_lock_state()
-            for Name,Value in overview[0].items():
-                UpdateDevice(Name,str(Value))
-            self.Count = 0
+        if self.Count >= 1 and self.LoggedIn == True:
+            try:
+                overview = self.session.get_lock_state()
+                for Name,Value in overview[0].items():
+                    UpdateDevice(Name,str(Value))
+                Domoticz.Log("Data updated")
+                self.Count = 0
+
+            except verisure.session.RequestError as error:
+                Domoticz.Error(str(error))
+                return
+
         self.Count += 1
 
 global _plugin
@@ -189,9 +201,8 @@ def UpdateDevice(Name,sValue):
             Domoticz.Device(Name=Name, Unit=ID, TypeName="Text", Options={"Custom": "0;"+Unit}, Used=1, Image=(_plugin.ImageID)).Create()
         else:
             Domoticz.Device(Name=Name, Unit=ID, TypeName="Custom", Options={"Custom": "0;"+Unit}, Used=1, Image=(_plugin.ImageID)).Create()
-
     if (ID in Devices):
-        if Devices[ID].sValue != sValue:
+        if Devices[ID].sValue != str(sValue):
             Devices[ID].Update(0, str(sValue))
 
 def CheckInternet():
