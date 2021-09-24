@@ -3,7 +3,7 @@
 # Author: flopp999
 #
 """
-<plugin key="Verisure" name="Verisure 0.12" author="flopp999" version="0.12" wikilink="https://github.com/flopp999/Verisure-Domoticz" externallink="https://www.verisure.com">
+<plugin key="Verisure" name="Verisure 0.13" author="flopp999" version="0.13" wikilink="https://github.com/flopp999/Verisure-Domoticz" externallink="https://www.verisure.com">
     <description>
         <h2>Support me with a coffee &<a href="https://www.buymeacoffee.com/flopp999">https://www.buymeacoffee.com/flopp999</a></h2><br/>
         <h3>Configuration</h3>
@@ -137,6 +137,8 @@ def UpdateDevice(Name,sValue):
             sValue = 4
         elif sValue == "STAR":
             sValue = 5
+        elif sValue == "TAG":
+            sValue = 6
         else:
             Domoticz.Error("Verisure method")
             Domoticz.Error(str(sValue))
